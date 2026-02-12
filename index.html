@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Back Brain Training | Luyện Não</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .settings {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            background: white;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 30px auto;
+            max-width: 300px;
+            aspect-ratio: 1;
+        }
+
+        .grid-cell {
+            background: #e9ecef;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .grid-cell.active {
+            background: #667eea;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-true {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-true:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-false {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-false:hover:not(:disabled) {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-start {
+            background: #667eea;
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-reset {
+            background: #ffc107;
+            color: #333;
+            grid-column: span 2;
+            font-weight: 700;
+        }
+
+        .btn-reset:hover:not(:disabled) {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .feedback {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .feedback.hidden {
+            visibility: hidden;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #856404;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 N-Back Training</h1>
+
+        <div class="settings">
+            <div class="setting-row">
+                <label for="nLevel">Chọn mức độ N:</label>
+                <select id="nLevel">
+                    <option value="1">1-Back</option>
+                    <option value="2">2-Back</option>
+                    <option value="3" selected>3-Back</option>
+                    <option value="4">4-Back</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label for="rounds">Số vòng:</label>
+                <select id="rounds">
+                    <option value="10">10 vòng</option>
+                    <option value="20" selected>20 vòng</option>
+                    <option value="30">30 vòng</option>
+                    <option value="50">50 vòng</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Vòng</div>
+                <div class="stat-value" id="currentRound">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Đúng</div>
+                <div class="stat-value" id="correctCount">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Độ chính xác</div>
+                <div class="stat-value" id="accuracy">0%</div>
+            </div>
+        </div>
+
+        <div class="grid-container" id="grid">
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+            <div class="grid-cell"></div>
+        </div>
+
+        <div class="feedback hidden" id="feedback"></div>
+
+        <div class="controls">
+            <button class="btn-true" id="btnTrue" disabled>✓ Trùng</button>
+            <button class="btn-false" id="btnFalse" disabled>✗ Khác</button>
+            <button class="btn-start" id="btnStart">Bắt đầu</button>
+            <button class="btn-reset" id="btnReset" style="display: none;">🔄 Bắt đầu lại</button>
+        </div>
+
+        <div class="instructions">
+            <p>Nhớ vị trí ô sáng và so sánh với vị trí cách đây <strong>N bước</strong>. Nhấn <strong>Trùng</strong> nếu giống nhau, nhấn <strong>Khác</strong> nếu khác nhau.</p>
+        </div>
+    </div>
+
+    <script>
+        class NBackGame {
+            constructor() {
+                this.sequence = [];
+                this.currentRound = 0;
+                this.correctAnswers = 0;
+                this.totalAnswers = 0;
+                this.nLevel = 3;
+                this.totalRounds = 20;
+                this.isPlaying = false;
+                this.hasAnswered = false;
+                
+                this.initElements();
+                this.bindEvents();
+            }
+
+            initElements() {
+                this.grid = document.getElementById('grid');
+                this.cells = this.grid.querySelectorAll('.grid-cell');
+                this.btnTrue = document.getElementById('btnTrue');
+                this.btnFalse = document.getElementById('btnFalse');
+                this.btnStart = document.getElementById('btnStart');
+                this.btnReset = document.getElementById('btnReset');
+                this.feedback = document.getElementById('feedback');
+                this.currentRoundEl = document.getElementById('currentRound');
+                this.correctCountEl = document.getElementById('correctCount');
+                this.accuracyEl = document.getElementById('accuracy');
+                this.nLevelSelect = document.getElementById('nLevel');
+                this.roundsSelect = document.getElementById('rounds');
+                this.progressFill = document.getElementById('progressFill');
+            }
+
+            bindEvents() {
+                this.btnStart.addEventListener('click', () => this.start());
+                this.btnTrue.addEventListener('click', () => this.answer(true));
+                this.btnFalse.addEventListener('click', () => this.answer(false));
+                this.btnReset.addEventListener('click', () => this.reset());
+                this.nLevelSelect.addEventListener('change', (e) => {
+                    this.nLevel = parseInt(e.target.value);
+                });
+                this.roundsSelect.addEventListener('change', (e) => {
+                    this.totalRounds = parseInt(e.target.value);
+                });
+            }
+
+            start() {
+                this.sequence = [];
+                this.currentRound = 0;
+                this.correctAnswers = 0;
+                this.totalAnswers = 0;
+                this.isPlaying = true;
+                this.hasAnswered = false;
+
+                this.nLevel = parseInt(this.nLevelSelect.value);
+                this.totalRounds = parseInt(this.roundsSelect.value);
+
+                this.btnStart.style.display = 'none';
+                this.btnReset.style.display = 'block';
+                this.btnReset.disabled = false;
+                this.nLevelSelect.disabled = true;
+                this.roundsSelect.disabled = true;
+                this.feedback.className = 'feedback hidden';
+                
+                this.updateStats();
+                this.nextRound();
+            }
+
+            reset() {
+                // Clear active cells
+                this.cells.forEach(cell => cell.classList.remove('active'));
+                
+                // Reset all values
+                this.sequence = [];
+                this.currentRound = 0;
+                this.correctAnswers = 0;
+                this.totalAnswers = 0;
+                this.isPlaying = false;
+                this.hasAnswered = false;
+                
+                // Reset UI
+                this.btnTrue.disabled = true;
+                this.btnFalse.disabled = true;
+                this.btnStart.style.display = 'block';
+                this.btnReset.style.display = 'none';
+                this.nLevelSelect.disabled = false;
+                this.roundsSelect.disabled = false;
+                this.feedback.className = 'feedback hidden';
+                this.progressFill.style.width = '0%';
+                
+                this.updateStats();
+            }
+
+            nextRound() {
+                if (this.currentRound >= this.totalRounds) {
+                    this.endGame();
+                    return;
+                }
+
+                this.currentRound++;
+                this.hasAnswered = false;
+                
+                // Generate random position (0-8)
+                const position = Math.floor(Math.random() * 9);
+                this.sequence.push(position);
+                
+                this.updateStats();
+                this.showPosition(position);
+                
+                // Enable buttons after N rounds
+                if (this.currentRound > this.nLevel) {
+                    this.btnTrue.disabled = false;
+                    this.btnFalse.disabled = false;
+                }
+            }
+
+            showPosition(position) {
+                // Clear all cells
+                this.cells.forEach(cell => cell.classList.remove('active'));
+                
+                // Activate selected cell
+                this.cells[position].classList.add('active');
+                
+                // Auto-advance if this is within first N rounds (no answer needed)
+                if (this.currentRound <= this.nLevel) {
+                    setTimeout(() => {
+                        this.cells[position].classList.remove('active');
+                        setTimeout(() => this.nextRound(), 300);
+                    }, 1500);
+                } else {
+                    // Deactivate after display time
+                    setTimeout(() => {
+                        this.cells[position].classList.remove('active');
+                    }, 1500);
+                }
+            }
+
+            answer(userAnswer) {
+                if (!this.isPlaying || this.hasAnswered || this.currentRound <= this.nLevel) {
+                    return;
+                }
+
+                this.hasAnswered = true;
+                this.totalAnswers++;
+                
+                const currentPosition = this.sequence[this.currentRound - 1];
+                const nBackPosition = this.sequence[this.currentRound - 1 - this.nLevel];
+                const correctAnswer = currentPosition === nBackPosition;
+                
+                const isCorrect = userAnswer === correctAnswer;
+                
+                if (isCorrect) {
+                    this.correctAnswers++;
+                    this.showFeedback('✓ Chính xác!', true);
+                } else {
+                    this.showFeedback('✗ Sai rồi! ' + (correctAnswer ? 'Đáp án đúng là TRÙNG' : 'Đáp án đúng là KHÁC'), false);
+                }
+                
+                this.btnTrue.disabled = true;
+                this.btnFalse.disabled = true;
+                
+                this.updateStats();
+                
+                setTimeout(() => {
+                    this.feedback.className = 'feedback hidden';
+                    this.nextRound();
+                }, 1500);
+            }
+
+            showFeedback(message, isCorrect) {
+                this.feedback.textContent = message;
+                this.feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+            }
+
+            updateStats() {
+                this.currentRoundEl.textContent = this.currentRound;
+                this.correctCountEl.textContent = this.correctAnswers;
+                
+                const accuracy = this.totalAnswers > 0 
+                    ? Math.round((this.correctAnswers / this.totalAnswers) * 100)
+                    : 0;
+                this.accuracyEl.textContent = accuracy + '%';
+                
+                const progress = (this.currentRound / this.totalRounds) * 100;
+                this.progressFill.style.width = progress + '%';
+            }
+
+            endGame() {
+                this.isPlaying = false;
+                this.btnTrue.disabled = true;
+                this.btnFalse.disabled = true;
+                this.btnStart.style.display = 'block';
+                this.btnReset.style.display = 'none';
+                this.nLevelSelect.disabled = false;
+                this.roundsSelect.disabled = false;
+                
+                const accuracy = this.totalAnswers > 0 
+                    ? Math.round((this.correctAnswers / this.totalAnswers) * 100)
+                    : 0;
+                
+                this.showFeedback(
+                    `🎉 Hoàn thành! Bạn đúng ${this.correctAnswers}/${this.totalAnswers} (${accuracy}%)`,
+                    accuracy >= 70
+                );
+            }
+        }
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new NBackGame();
+        });
+    </script>
+</body>
+</html>
