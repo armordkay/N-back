@@ -90,12 +90,34 @@
             background: #e9ecef;
             border-radius: 10px;
             transition: all 0.3s ease;
+            cursor: default;
         }
 
         .grid-cell.active {
             background: #667eea;
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .grid-cell.clickable {
+            cursor: pointer;
+        }
+
+        .grid-cell.clickable:hover {
+            background: #d0d4db;
+            transform: scale(1.02);
+        }
+
+        .grid-cell.correct {
+            background: #28a745 !important;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .grid-cell.incorrect {
+            background: #dc3545 !important;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
         }
 
         .stats {
@@ -217,6 +239,11 @@
             color: #721c24;
         }
 
+        .feedback.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
         .feedback.hidden {
             visibility: hidden;
         }
@@ -229,15 +256,14 @@
             border-left: 4px solid #ffc107;
         }
 
-        .instructions h3 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-
         .instructions p {
             color: #856404;
             line-height: 1.6;
             margin-bottom: 8px;
+        }
+
+        .instructions p:last-child {
+            margin-bottom: 0;
         }
 
         .progress-bar {
@@ -273,6 +299,7 @@
 <body>
     <div class="container">
         <h1>🧠 N-Back Training</h1>
+        <p class="subtitle">Luyện tập trí nhớ và tập trung</p>
 
         <div class="settings">
             <div class="setting-row">
@@ -315,15 +342,15 @@
         </div>
 
         <div class="grid-container" id="grid">
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
-            <div class="grid-cell"></div>
+            <div class="grid-cell" data-index="0"></div>
+            <div class="grid-cell" data-index="1"></div>
+            <div class="grid-cell" data-index="2"></div>
+            <div class="grid-cell" data-index="3"></div>
+            <div class="grid-cell" data-index="4"></div>
+            <div class="grid-cell" data-index="5"></div>
+            <div class="grid-cell" data-index="6"></div>
+            <div class="grid-cell" data-index="7"></div>
+            <div class="grid-cell" data-index="8"></div>
         </div>
 
         <div class="feedback hidden" id="feedback"></div>
@@ -336,7 +363,9 @@
         </div>
 
         <div class="instructions">
-            <p>Nhớ vị trí ô sáng và so sánh với vị trí cách đây <strong>N bước</strong>. Nhấn <strong>Trùng</strong> nếu giống nhau, nhấn <strong>Khác</strong> nếu khác nhau.</p>
+            <p>Nhớ vị trí ô sáng và so sánh với vị trí cách đây <strong>N bước</strong>.</p>
+            <p>• Nhấn <strong>Trùng</strong> nếu vị trí giống nhau</p>
+            <p>• Nhấn <strong>Khác</strong> rồi <strong>click vào ô đúng</strong> (vị trí N bước trước)</p>
         </div>
     </div>
 
@@ -351,6 +380,7 @@
                 this.totalRounds = 20;
                 this.isPlaying = false;
                 this.hasAnswered = false;
+                this.waitingForGridClick = false;
                 
                 this.initElements();
                 this.bindEvents();
@@ -375,8 +405,13 @@
             bindEvents() {
                 this.btnStart.addEventListener('click', () => this.start());
                 this.btnTrue.addEventListener('click', () => this.answer(true));
-                this.btnFalse.addEventListener('click', () => this.answer(false));
+                this.btnFalse.addEventListener('click', () => this.answerFalse());
                 this.btnReset.addEventListener('click', () => this.reset());
+                
+                this.cells.forEach((cell, index) => {
+                    cell.addEventListener('click', () => this.handleGridClick(index));
+                });
+                
                 this.nLevelSelect.addEventListener('change', (e) => {
                     this.nLevel = parseInt(e.target.value);
                 });
@@ -392,6 +427,7 @@
                 this.totalAnswers = 0;
                 this.isPlaying = true;
                 this.hasAnswered = false;
+                this.waitingForGridClick = false;
 
                 this.nLevel = parseInt(this.nLevelSelect.value);
                 this.totalRounds = parseInt(this.roundsSelect.value);
@@ -408,18 +444,18 @@
             }
 
             reset() {
-                // Clear active cells
-                this.cells.forEach(cell => cell.classList.remove('active'));
+                this.cells.forEach(cell => {
+                    cell.classList.remove('active', 'clickable', 'correct', 'incorrect');
+                });
                 
-                // Reset all values
                 this.sequence = [];
                 this.currentRound = 0;
                 this.correctAnswers = 0;
                 this.totalAnswers = 0;
                 this.isPlaying = false;
                 this.hasAnswered = false;
+                this.waitingForGridClick = false;
                 
-                // Reset UI
                 this.btnTrue.disabled = true;
                 this.btnFalse.disabled = true;
                 this.btnStart.style.display = 'block';
@@ -440,15 +476,14 @@
 
                 this.currentRound++;
                 this.hasAnswered = false;
+                this.waitingForGridClick = false;
                 
-                // Generate random position (0-8)
                 const position = Math.floor(Math.random() * 9);
                 this.sequence.push(position);
                 
                 this.updateStats();
                 this.showPosition(position);
                 
-                // Enable buttons after N rounds
                 if (this.currentRound > this.nLevel) {
                     this.btnTrue.disabled = false;
                     this.btnFalse.disabled = false;
@@ -456,20 +491,18 @@
             }
 
             showPosition(position) {
-                // Clear all cells
-                this.cells.forEach(cell => cell.classList.remove('active'));
+                this.cells.forEach(cell => {
+                    cell.classList.remove('active', 'clickable', 'correct', 'incorrect');
+                });
                 
-                // Activate selected cell
                 this.cells[position].classList.add('active');
                 
-                // Auto-advance if this is within first N rounds (no answer needed)
                 if (this.currentRound <= this.nLevel) {
                     setTimeout(() => {
                         this.cells[position].classList.remove('active');
                         setTimeout(() => this.nextRound(), 300);
                     }, 1500);
                 } else {
-                    // Deactivate after display time
                     setTimeout(() => {
                         this.cells[position].classList.remove('active');
                     }, 1500);
@@ -477,7 +510,7 @@
             }
 
             answer(userAnswer) {
-                if (!this.isPlaying || this.hasAnswered || this.currentRound <= this.nLevel) {
+                if (!this.isPlaying || this.hasAnswered || this.currentRound <= this.nLevel || this.waitingForGridClick) {
                     return;
                 }
 
@@ -492,9 +525,11 @@
                 
                 if (isCorrect) {
                     this.correctAnswers++;
-                    this.showFeedback('✓ Chính xác!', true);
+                    this.showFeedback('✓ Chính xác!', 'correct');
+                    this.cells[currentPosition].classList.add('correct');
                 } else {
-                    this.showFeedback('✗ Sai rồi! ' + (correctAnswer ? 'Đáp án đúng là TRÙNG' : 'Đáp án đúng là KHÁC'), false);
+                    this.showFeedback('✗ Sai! Vị trí đúng là ô ' + (nBackPosition + 1), 'incorrect');
+                    this.cells[nBackPosition].classList.add('correct');
                 }
                 
                 this.btnTrue.disabled = true;
@@ -503,14 +538,74 @@
                 this.updateStats();
                 
                 setTimeout(() => {
+                    this.cells.forEach(cell => cell.classList.remove('correct', 'incorrect'));
                     this.feedback.className = 'feedback hidden';
                     this.nextRound();
-                }, 1500);
+                }, 2000);
             }
 
-            showFeedback(message, isCorrect) {
+            answerFalse() {
+                if (!this.isPlaying || this.hasAnswered || this.currentRound <= this.nLevel || this.waitingForGridClick) {
+                    return;
+                }
+
+                this.waitingForGridClick = true;
+                this.btnTrue.disabled = true;
+                this.btnFalse.disabled = true;
+                
+                this.cells.forEach(cell => {
+                    cell.classList.add('clickable');
+                });
+                
+                this.showFeedback('👆 Click vào ô đã xuất hiện ' + this.nLevel + ' lần trước', 'info');
+            }
+
+            handleGridClick(clickedIndex) {
+                if (!this.waitingForGridClick) {
+                    return;
+                }
+
+                this.hasAnswered = true;
+                this.totalAnswers++;
+                this.waitingForGridClick = false;
+                
+                this.cells.forEach(cell => {
+                    cell.classList.remove('clickable');
+                });
+                
+                const currentPosition = this.sequence[this.currentRound - 1];
+                const nBackPosition = this.sequence[this.currentRound - 1 - this.nLevel];
+                const correctAnswer = currentPosition === nBackPosition;
+                
+                const isCorrect = !correctAnswer && clickedIndex === nBackPosition;
+                
+                if (isCorrect) {
+                    this.correctAnswers++;
+                    this.showFeedback('✓ Chính xác!', 'correct');
+                    this.cells[clickedIndex].classList.add('correct');
+                } else {
+                    if (correctAnswer) {
+                        this.showFeedback('✗ Sai! Vị trí TRÙNG nhau', 'incorrect');
+                        this.cells[currentPosition].classList.add('correct');
+                    } else {
+                        this.showFeedback('✗ Sai! Vị trí đúng là ô ' + (nBackPosition + 1), 'incorrect');
+                        this.cells[clickedIndex].classList.add('incorrect');
+                        this.cells[nBackPosition].classList.add('correct');
+                    }
+                }
+                
+                this.updateStats();
+                
+                setTimeout(() => {
+                    this.cells.forEach(cell => cell.classList.remove('correct', 'incorrect'));
+                    this.feedback.className = 'feedback hidden';
+                    this.nextRound();
+                }, 2000);
+            }
+
+            showFeedback(message, type) {
                 this.feedback.textContent = message;
-                this.feedback.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+                this.feedback.className = 'feedback ' + type;
             }
 
             updateStats() {
@@ -541,12 +636,11 @@
                 
                 this.showFeedback(
                     `🎉 Hoàn thành! Bạn đúng ${this.correctAnswers}/${this.totalAnswers} (${accuracy}%)`,
-                    accuracy >= 70
+                    accuracy >= 70 ? 'correct' : 'incorrect'
                 );
             }
         }
 
-        // Initialize game when page loads
         document.addEventListener('DOMContentLoaded', () => {
             new NBackGame();
         });
